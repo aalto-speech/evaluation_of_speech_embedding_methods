@@ -1,0 +1,127 @@
+# Generated 2022-01-19 from:
+# /scratch/elec/t405-puhe/p/porjazd1/Metadata_Classification/TCN/asr_topic_speechbrain/mgb_asr/hyperparams.yaml
+# yamllint disable
+# Seed needs to be set at top of yaml, before objects with parameters are made
+seed: 1234
+__set_seed: !apply:torch.manual_seed [1234]
+
+skip_training: True
+
+output_folder: ../output_folder_layer_1
+label_encoder_file: !ref <output_folder>/label_encoder.txt
+
+train_log: !ref <output_folder>/train_log.txt
+train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
+    save_file: !ref <output_folder>/train_log.txt
+save_folder: !ref <output_folder>/save
+
+wav2vec2_hub: openai/whisper-small.en
+wav2vec2_folder: !ref <save_folder>/wav2vec2_checkpoint
+
+# Feature parameters
+sample_rate: 22050
+new_sample_rate: 16000
+
+# Training params
+n_epochs: 30
+stopping_factor: 10
+
+dataloader_options:
+    batch_size: 32
+    shuffle: false
+
+test_dataloader_options:
+    batch_size: 1
+    shuffle: false
+
+lr: 0.0001
+dropout_val: 0.3
+
+#freeze all wav2vec2
+freeze_wav2vec2: True
+freeze_wav2vec2_conv: True
+
+label_encoder: !new:speechbrain.dataio.encoder.CategoricalEncoder
+
+encoder_dims: 768  
+n_classes: 4
+
+resampler: !new:speechbrain.processing.speech_augmentation.Resample
+    orig_freq: !ref <sample_rate>
+    new_freq: !ref <new_sample_rate>
+
+# Whisper encoder
+wav2vec2: !new:speechbrain.lobes.models.huggingface_whisper.HuggingFaceWhisper
+    source: !ref <wav2vec2_hub>
+    freeze_encoder: !ref <freeze_wav2vec2>
+    save_path: !ref <wav2vec2_folder>
+    output_all_hiddens: True
+
+lstm: !new:speechbrain.nnet.RNN.LSTM
+    input_size: !ref <encoder_dims>
+    hidden_size: 512
+    num_layers: 4
+    bidirectional: True
+
+lin_1: !new:speechbrain.nnet.linear.Linear
+    input_size: 1024
+    n_neurons: 1024
+    bias: True
+
+lin_2: !new:speechbrain.nnet.linear.Linear
+    input_size: 1024
+    n_neurons: 1024
+    bias: True
+
+lin_3: !new:speechbrain.nnet.linear.Linear
+    input_size: 1024
+    n_neurons: 1024
+    bias: True
+
+label_lin: !new:speechbrain.nnet.linear.Linear
+    input_size: 1024
+    n_neurons: !ref <n_classes>
+    bias: False
+
+dropout: !name:torch.nn.functional.dropout
+    p: !ref <dropout_val>
+    inplace: False
+
+avg_pool: !new:speechbrain.nnet.pooling.StatisticsPooling
+    return_std: False
+
+log_softmax: !new:speechbrain.nnet.activations.Softmax
+    apply_log: True
+
+opt_class: !name:torch.optim.Adam
+    lr: !ref <lr>
+
+epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
+    limit: !ref <n_epochs>
+
+# Functions that compute the statistics to track during the validation step.
+accuracy_computer: !name:speechbrain.utils.Accuracy.AccuracyStats
+
+compute_cost: !name:speechbrain.nnet.losses.nll_loss
+
+error_stats: !name:speechbrain.utils.metric_stats.MetricStats
+    metric: !name:speechbrain.nnet.losses.classification_error
+        reduction: batch
+
+modules:
+    wav2vec2: !ref <wav2vec2>
+    lstm: !ref <lstm>
+    lin_1: !ref <lin_1>
+    lin_2: !ref <lin_2>
+    lin_3: !ref <lin_3>
+    label_lin: !ref <label_lin>
+
+model: !new:torch.nn.ModuleList
+      - [!ref <lstm>, !ref <lin_1>, !ref <lin_2>, !ref <lin_3>, !ref <label_lin>]
+
+checkpointer: !new:speechbrain.utils.checkpoints.Checkpointer
+    checkpoints_dir: !ref <save_folder>
+    recoverables:
+        model: !ref <model>
+        # wav2vec2: !ref <wav2vec2>
+        counter: !ref <epoch_counter>
