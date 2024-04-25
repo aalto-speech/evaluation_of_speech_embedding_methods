@@ -1,5 +1,4 @@
 # Generated 2022-01-19 from:
-# /scratch/elec/t405-puhe/p/porjazd1/Metadata_Classification/TCN/asr_topic_speechbrain/mgb_asr/hyperparams.yaml
 # yamllint disable
 # Seed needs to be set at top of yaml, before objects with parameters are made
 seed: 1234
