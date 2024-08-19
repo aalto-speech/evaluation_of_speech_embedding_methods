@@ -1,6 +1,6 @@
 # Evaluation of Speech Embedding Methods
 
-This repository contains the codes used in the paper: TODO
+This repository contains the codes used in the paper: [From Raw Speech to Fixed Representations: A Comprehensive Evaluation of Speech Embedding Techniques](https://doi.org/10.1109/TASLP.2024.3426301)
 
 The small-scale models are:
 
